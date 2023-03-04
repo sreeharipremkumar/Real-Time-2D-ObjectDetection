@@ -1,3 +1,8 @@
+/*
+        Made by: Sreehari Premkumar
+        MS Robotics Northeastern University
+
+*/
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
@@ -6,12 +11,12 @@
 #include <string>
 #include "../include/csv_util.h"
 
-int KNearestNeighbour(std::vector<std::pair<float, int>> &distance)
+int KNearestNeighbour(std::vector<std::pair<float, int>> &distance) 
 {
         int K = 3;
         std::sort(distance.begin(),distance.end());
 
-        std::unordered_map<int, int> label_counts;
+        std::unordered_map<int, int> label_counts; //to map the labels and number of times the label occurs in the top K sorted distances
         for (int i = 0; i < K; ++i)
         {
                 int label = distance[i].second;
@@ -19,7 +24,7 @@ int KNearestNeighbour(std::vector<std::pair<float, int>> &distance)
         }
 
         int max_count = 0, max_label = -1;
-        for (const auto &label_count : label_counts)
+        for (const auto &label_count : label_counts) //Finding the max number of labels
         {
                 if (label_count.second > max_count)
                 {
@@ -36,6 +41,7 @@ int main(int argc, char *argv[]) {
         // open the video device
 	std::string url = "http://10.0.0.53:4747/video";
         capdev = new cv::VideoCapture(url,cv::CAP_FFMPEG);
+        //capdev = new cv::VideoCapture(0); //use this instead if webcam
         if( !capdev->isOpened() ) {
                 printf("Unable to open video device\n");
                 return(-1);
@@ -68,7 +74,7 @@ int main(int argc, char *argv[]) {
         // {
         //     std::cout<<"Could not open file" << std::endl;    //throw error if file not present
         //     return 1;
-        // }   
+        // }   //for testing for a single image
         float thresh = 81;
 
         for(;;) {
@@ -101,7 +107,7 @@ int main(int argc, char *argv[]) {
 		int h = read_image_data_csv((char*)"../csv/Data.csv",feature_labels,csv_data,0);
 		if(h!=-1)
 		{
-			id = feature_iter(feature_vec,csv_data,Knn,distance);
+			id = feature_iter(feature_vec,csv_data,Knn,distance); //finding SSE of the feature vector and returns the SSE as distance for KNN(if KNN active)
 
                         if(Knn == true)
                         {
@@ -135,7 +141,7 @@ int main(int argc, char *argv[]) {
                 if (key == '.'){
                         thresh = thresh - 2;
                 }
-		if (key == 't'){
+		if (key == 't'){ //to train for new object
 			
 			
 			std::cout<< "\nDo you wish to train the current Object?(y/n): ";
@@ -155,7 +161,7 @@ int main(int argc, char *argv[]) {
 				c = '\0';
 			}
 		}
-                if(key == 'k'){
+                if(key == 'k'){ //Toggle for activating/deactivating KNN Classification
                         if(Knn == false)
                         {
                                 Knn = true;
@@ -164,7 +170,7 @@ int main(int argc, char *argv[]) {
                                 Knn = false;
                         }
                 }
-                if(key == 's'){
+                if(key == 's'){ //Saving different Filter results to Results folder
                         cv::imwrite("../Result/Image.jpg", frame);
                         cv::imwrite("../Result/Grassfire.jpg", frame2);
                         cv::imwrite("../Result/Segmented.jpg", color);

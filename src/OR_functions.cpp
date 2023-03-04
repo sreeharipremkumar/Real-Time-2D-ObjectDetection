@@ -1,3 +1,9 @@
+/*
+        Made by: Sreehari Premkumar
+        MS Robotics Northeastern University
+
+*/
+
 #include <opencv2/highgui.hpp> //including needed files
 #include <opencv2/opencv.hpp>
 #include <iostream>
@@ -7,7 +13,7 @@
 #include <cmath>
 #include "../include/csv_util.h"
 
-int Darken(cv::Mat &src, cv::Mat &dst)
+int Darken(cv::Mat &src, cv::Mat &dst) //darkens the color for easier background/foreground separation
 {
 
     cv::Mat hsv;
@@ -28,7 +34,7 @@ int Darken(cv::Mat &src, cv::Mat &dst)
     return 0;
 }
 
-int BlurThreshold(cv::Mat &src, cv::Mat &dst, float thresh)
+int BlurThreshold(cv::Mat &src, cv::Mat &dst, float thresh) //applies gaussian vlur andthresholding to separate background/foreground
 {
 
     cv::GaussianBlur(src, src, cv::Size(3, 3), 0, 0);
@@ -52,7 +58,7 @@ int BlurThreshold(cv::Mat &src, cv::Mat &dst, float thresh)
     return 0;
 }
 
-int dilation_erotion(cv::Mat &src, cv::Mat &grassfire, int num, int fgbg)
+int dilation_erotion(cv::Mat &src, cv::Mat &grassfire, int num, int fgbg) //performs dilation/erosion after the grassfire matrix has been calculated
 {
     for (int i = 0; i < src.rows; i++)
     {
@@ -69,8 +75,8 @@ int dilation_erotion(cv::Mat &src, cv::Mat &grassfire, int num, int fgbg)
     return 0;
 }
 
-int Grassfire(cv::Mat &src, cv::Mat &grassfire, int fg, int num)
-{
+int Grassfire(cv::Mat &src, cv::Mat &grassfire, int fg, int num)// calculates the grassfire matrix and performs dilation/erosion according to the parameters
+{   //src input image, grassfire - grassfire mat, fg = 0 then dilation, if 255 then performs erosion, num = number of dilation/erosion
 
     grassfire = cv::Mat::zeros(src.size(), CV_32S);
     int temp1, temp2;
@@ -139,7 +145,7 @@ int Grassfire(cv::Mat &src, cv::Mat &grassfire, int fg, int num)
     return 0;
 }
 
-int ColorDisplay(cv::Mat &src, cv::Mat &connected, cv::Mat &color)
+int ColorDisplay(cv::Mat &src, cv::Mat &connected, cv::Mat &color) //displaying the segmented reagion using different colors, can display upto 10 different region colors
 {
     uchar RGB[10][3] = {
         {255, 182, 193}, // Light Pink
@@ -181,8 +187,10 @@ int ColorDisplay(cv::Mat &src, cv::Mat &connected, cv::Mat &color)
     return 0;
 }
 
+//calculating Means of the database columns,and also the min and max of each column
 std::tuple<std::vector<float>,std::vector<float>,std::vector<float>> CalcMeans(std::vector<std::vector<float>> &csv_data) 
 {
+    
     std::vector<float> means(csv_data[0].size());
     std::vector<float> max,min;
     max.assign(csv_data[0].size(),-std::numeric_limits<float>::infinity());
@@ -208,6 +216,7 @@ std::tuple<std::vector<float>,std::vector<float>,std::vector<float>> CalcMeans(s
     return std::make_tuple(means, max, min);
 }
 
+//calculates standard deviation of the database 
 std::vector<float> CalcStdDevs(const std::vector<std::vector<float>>& csv_data,std::vector<float> &means) {
     
     std::vector<float> std_devs(csv_data[0].size());
@@ -221,6 +230,8 @@ std::vector<float> CalcStdDevs(const std::vector<std::vector<float>>& csv_data,s
     return std_devs;
 }
 
+//finds Sum of Squared Errors after normalising and scaling them
+//takes Current Feature Vector, 1 feature vector from DB, mean,std_dev,min and Max of DB columns
 float SSE(std::vector<float> &Ft, std::vector<float> &Fi,std::vector<float> &mean,std::vector<float> &std_dev,std::vector<float> &max,std::vector<float> &min)
 {
     float sum = 0;int mul = 1;
@@ -246,7 +257,8 @@ float SSE(std::vector<float> &Ft, std::vector<float> &Fi,std::vector<float> &mea
     return sum;
 }
 
-
+//Iterates through all the features in the database comparing the SSE, and finding closest Object Match
+//If KNN was used as classifiying algo instead, then return the SSE as distance to KNN
 int feature_iter(std::vector<float> &feature_vec,std::vector<std::vector<float>> &csv_data,bool knn,std::vector<std::pair<float, int>> &distance)
 {   
     std::vector<float> max,min,means;
@@ -275,7 +287,8 @@ int feature_iter(std::vector<float> &feature_vec,std::vector<std::vector<float>>
 }
 
 
-
+// Calculates the Actual Features of the Object and also Draws Axis and Bounding Box
+//Mainly Oriented Central Moments, Ratio of Height and width of the bounding box, and %object filling the region
 int LeastCentralMoments(std::vector<float> &feature_vec,cv::Mat &src, cv::Mat &bounding, cv::Mat &label, cv::Mat &stats, cv::Mat &centroids, int num_label,char * &obj_label,bool knn)
 {
     bounding = src.clone();
@@ -295,6 +308,7 @@ int LeastCentralMoments(std::vector<float> &feature_vec,cv::Mat &src, cv::Mat &b
     double X_centroid = centroids.at<double>(id, 0);
     double Y_centroid = centroids.at<double>(id, 1);
 
+    //finding u00, u01, u10, moments
     double central_y_moment = 0, central_x_moment = 0, cross_moment = 0, alpha;
     for (int y = 0; y < label.rows; y++)
     {
@@ -311,6 +325,7 @@ int LeastCentralMoments(std::vector<float> &feature_vec,cv::Mat &src, cv::Mat &b
     }
     alpha = 0.5 * std::atan2(2 * cross_moment, central_x_moment - central_y_moment);
 
+    //finding oriented central moments
     float sin_alpha = std::sin(alpha + pi);
     float cos_alpha = std::cos(alpha + pi);
     float oriented_central_moment = 0;
@@ -328,6 +343,7 @@ int LeastCentralMoments(std::vector<float> &feature_vec,cv::Mat &src, cv::Mat &b
 
     float width, height;
 
+    //finding and Drawing the Axis along the Alpha within the object
     if (alpha > 0.1 || alpha < -0.1)
     {
         float slope_long = std::tan(alpha);
@@ -384,9 +400,9 @@ int LeastCentralMoments(std::vector<float> &feature_vec,cv::Mat &src, cv::Mat &b
         height = stats.at<int>(id, cv::CC_STAT_HEIGHT);
     }
 
+    //Drawing the bounding Box
     cv::Point2f center(X_centroid, Y_centroid);
 
-    // Create a Size2f object representing the width and height of the bounding box
     cv::Size2f size(width,height);
     cv::RotatedRect boundingbox(center, size, alpha*pi/180);
     cv::Scalar color(0, 255, 0); // Green color
@@ -402,7 +418,6 @@ int LeastCentralMoments(std::vector<float> &feature_vec,cv::Mat &src, cv::Mat &b
         corners[i].y = center.y + (corner.x - center.x) * sin(alpha) + (corner.y - center.y) * cos(alpha);
     }
 
-    // Draw the bounding box
     cv::line(bounding, corners[0], corners[1], color, 2);
     cv::line(bounding, corners[1], corners[2], color, 2);
     cv::line(bounding, corners[2], corners[3], color, 2);
@@ -417,6 +432,7 @@ int LeastCentralMoments(std::vector<float> &feature_vec,cv::Mat &src, cv::Mat &b
     }
     cv::putText(bounding, text, cv::Point(center.x + boundingbox.size.width / 2, center.y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
 
+    //Calculating Feature for feature vector
     float ratio = height/width;
     float percentage_filled = stats.at<int>(id,cv::CC_STAT_AREA)/(height*width);
     feature_vec[0] = ratio;
